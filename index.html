@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>VINN Dashboard - Cek Masa Aktif Ewallet & Bank</title>
+<style>
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+font-family: 'Poppins', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+body {
+min-height: 100vh;
+background: radial-gradient(circle at 20% 30%, #0a0f1e, #03050b);
+padding: 1.5rem;
+position: relative;
+overflow-x: auto;
+}
+
+/* efek salju - lebih halus dan terus menerus */
+.snowflake {
+position: fixed;
+top: -10px;
+color: #fff;
+user-select: none;
+pointer-events: none;
+z-index: 9999;
+font-size: 1.2rem;
+opacity: 0.7;
+animation: fall linear forwards;
+text-shadow: 0 0 5px cyan, 0 0 3px white;
+will-change: transform;
+}
+
+@keyframes fall {
+0% {
+transform: translateY(-10px) rotate(0deg);
+opacity: 0.8;
+}
+100% {
+transform: translateY(100vh) rotate(360deg);
+opacity: 0.2;
+}
+}
+
+.dashboard-container {
+max-width: 1600px;
+margin: 0 auto;
+}
+
+/* header neon */
+.neon-header {
+text-align: center;
+margin-bottom: 2rem;
+}
+
+.neon-header h1 {
+font-size: 2rem;
+font-weight: 700;
+letter-spacing: 3px;
+color: #00f7ff;
+text-shadow: 0 0 5px #00e0ff, 0 0 12px #0afff0, 0 0 20px #0099ff;
+animation: neonPulse 1.8s infinite alternate;
+}
+
+@keyframes neonPulse {
+0% { text-shadow: 0 0 2px cyan, 0 0 5px #0afff0; }
+100% { text-shadow: 0 0 12px cyan, 0 0 20px #00a6ff, 0 0 30px #006eff; }
+}
+
+/* tombol dan kontrol */
+.control-bar {
+display: flex;
+gap: 1rem;
+justify-content: center;
+margin-bottom: 1.5rem;
+flex-wrap: wrap;
+}
+
+.btn-neon {
+background: rgba(0, 30, 40, 0.7);
+border: 1px solid #0ff;
+color: #0ff;
+padding: 10px 24px;
+border-radius: 40px;
+font-weight: bold;
+cursor: pointer;
+transition: all 0.3s;
+backdrop-filter: blur(5px);
+font-size: 0.9rem;
+box-shadow: 0 0 5px rgba(0,255,255,0.3);
+}
+
+.btn-neon:hover {
+background: rgba(0, 255, 255, 0.2);
+box-shadow: 0 0 15px cyan;
+transform: translateY(-2px);
+}
+
+/* form modal / inline editor */
+.editor-panel {
+background: rgba(10, 25, 35, 0.95);
+backdrop-filter: blur(10px);
+border: 1px solid #0ff;
+border-radius: 20px;
+padding: 20px;
+margin-bottom: 20px;
+display: none;
+box-shadow: 0 0 20px rgba(0,255,255,0.3);
+}
+
+.editor-panel.show {
+display: block;
+animation: fadeSlide 0.3s ease;
+}
+
+@keyframes fadeSlide {
+from { opacity: 0; transform: translateY(-10px); }
+to { opacity: 1; transform: translateY(0); }
+}
+
+.editor-title {
+color: #0ff;
+margin-bottom: 15px;
+font-size: 1.2rem;
+text-align: center;
+}
+
+.form-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+gap: 15px;
+}
+
+.form-group {
+display: flex;
+flex-direction: column;
+gap: 5px;
+}
+
+.form-group label {
+color: #0ff;
+font-size: 0.8rem;
+text-transform: uppercase;
+font-weight: 500;
+}
+
+.form-group input, .form-group select {
+background: rgba(0, 20, 30, 0.8);
+border: 1px solid #0ff;
+padding: 10px;
+border-radius: 8px;
+color: white;
+font-size: 0.9rem;
+}
+
+.form-group input:focus {
+outline: none;
+box-shadow: 0 0 10px cyan;
+}
+
+.btn-submit {
+background: cyan;
+color: #000;
+border: none;
+padding: 10px 20px;
+border-radius: 30px;
+font-weight: bold;
+cursor: pointer;
+margin-top: 15px;
+transition: all 0.3s;
+}
+
+.btn-submit:hover {
+transform: scale(1.02);
+box-shadow: 0 0 15px cyan;
+}
+
+/* tabel wrapper */
+.neon-table-wrapper {
+overflow-x: auto;
+border-radius: 28px;
+background: rgba(10, 20, 30, 0.35);
+backdrop-filter: blur(8px);
+box-shadow: 0 0 18px rgba(0, 255, 255, 0.3);
+border: 1px solid rgba(0, 255, 255, 0.4);
+}
+
+.data-table {
+width: 100%;
+border-collapse: collapse;
+min-width: 1200px;
+font-size: 0.8rem;
+}
+
+.data-table th {
+background: rgba(0, 20, 40, 0.8);
+color: #0ff;
+padding: 14px 10px;
+border-bottom: 2px solid rgba(0, 255, 255, 0.6);
+text-shadow: 0 0 3px cyan;
+position: sticky;
+top: 0;
+z-index: 10;
+}
+
+.data-table td {
+padding: 10px 8px;
+border-bottom: 1px solid rgba(0, 255, 200, 0.2);
+color: #eef5ff;
+}
+
+.data-table tr:hover td {
+background: rgba(0, 255, 255, 0.1);
+}
+
+.badge-date {
+background: rgba(0, 255, 255, 0.2);
+padding: 4px 8px;
+border-radius: 20px;
+font-family: monospace;
+font-weight: bold;
+display: inline-block;
+font-size: 0.75rem;
+cursor: pointer;
+transition: all 0.2s;
+}
+
+.badge-date:hover {
+transform: scale(1.05);
+background: rgba(0, 255, 255, 0.4);
+}
+
+.expired-badge {
+background: rgba(255, 50, 50, 0.4);
+border: 1px solid #ff6666;
+box-shadow: 0 0 5px red;
+}
+
+.warning-badge {
+background: rgba(255, 170, 0, 0.4);
+border: 1px solid #ffaa44;
+box-shadow: 0 0 5px orange;
+}
+
+.delete-btn, .edit-btn {
+background: none;
+border: none;
+color: #0ff;
+cursor: pointer;
+margin: 0 3px;
+font-size: 1.1rem;
+transition: all 0.2s;
+padding: 4px 8px;
+border-radius: 6px;
+}
+
+.edit-btn:hover {
+color: #00ffaa;
+background: rgba(0, 255, 255, 0.2);
+transform: scale(1.1);
+}
+
+.delete-btn:hover {
+color: #ff4444;
+background: rgba(255, 0, 0, 0.2);
+transform: scale(1.1);
+}
+
+.info-neon {
+margin-top: 20px;
+text-align: center;
+font-size: 0.75rem;
+color: #88ddff;
+border-top: 1px dashed cyan;
+padding-top: 15px;
+}
+
+.search-box {
+margin-bottom: 15px;
+text-align: right;
+}
+
+.search-box input {
+background: rgba(0,20,30,0.8);
+border: 1px solid cyan;
+padding: 8px 15px;
+border-radius: 30px;
+color: white;
+width: 250px;
+transition: all 0.3s;
+}
+
+.search-box input:focus {
+outline: none;
+box-shadow: 0 0 10px cyan;
+width: 300px;
+}
+
+/* status bar */
+.status-bar {
+position: fixed;
+bottom: 20px;
+right: 20px;
+background: rgba(0, 0, 0, 0.7);
+backdrop-filter: blur(5px);
+padding: 6px 12px;
+border-radius: 20px;
+font-size: 0.7rem;
+color: cyan;
+border: 1px solid cyan;
+z-index: 10000;
+font-family: monospace;
+}
+
+@media (max-width: 768px) {
+body {
+padding: 1rem;
+}
+.neon-header h1 {
+font-size: 1.3rem;
+}
+.btn-neon {
+padding: 6px 16px;
+font-size: 0.8rem;
+}
+}
+</style>
+</head>
+<body>
+
+<div class="dashboard-container">
+<div class="neon-header">
+<h1>✨ VINN DASHBOARD · CEK MASA AKTIF ✨</h1>
+<p>❄️ DANA | OVO | LINK AJA | ALL BANK ❄️ | Klik tanggal untuk edit | + Tambah data baru</p>
+</div>
+
+<div class="control-bar">
+<button class="btn-neon" id="toggleEditorBtn">➕ TAMBAH DATA BARU</button>
+<button class="btn-neon" id="exportDataBtn">📋 EXPORT DATA (JSON)</button>
+<button class="btn-neon" id="importTriggerBtn">📂 IMPORT DATA</button>
+<input type="file" id="importFile" accept=".json" style="display: none;">
+<button class="btn-neon" id="resetDataBtn">🔄 RESET DATA DEFAULT</button>
+</div>
+
+<!-- Panel untuk tambah/edit data -->
+<div id="editorPanel" class="editor-panel">
+<div class="editor-title" id="editorTitle">➕ TAMBAH DATA BARU</div>
+<div class="form-grid">
+<div class="form-group">
+<label>Jenis Ewallet/Bank</label>
+<select id="recordType">
+<option value="dana">DANA</option>
+<option value="ovo">OVO</option>
+<option value="linkaja">LINK AJA</option>
+<option value="bank">ALL BANK</option>
+</select>
+</div>
+<div class="form-group">
+<label>Nama / Pemilik *</label>
+<input type="text" id="ownerName" placeholder="Contoh: DANA G1 / ANI">
+</div>
+<div class="form-group">
+<label>Tanggal Aktif (format: DD Month YYYY)</label>
+<input type="text" id="activeDate" placeholder="23 April 2027 atau kosongkan">
+</div>
+</div>
+<div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+<button class="btn-submit" id="saveRecordBtn">💾 SIMPAN</button>
+<button class="btn-neon" id="cancelEditBtn" style="background: #330000;">BATAL</button>
+</div>
+</div>
+
+<div class="search-box">
+<input type="text" id="searchInput" placeholder="🔍 Cari nama / pemilik...">
+</div>
+
+<div class="neon-table-wrapper">
+<table class="data-table" id="dataTable">
+<thead>
+<tr>
+<th>💎 DANA / Pemilik</th>
+<th>📅 MASA AKTIF DANA</th>
+<th>⚡ OVO / Pemilik</th>
+<th>📅 MASA AKTIF OVO</th>
+<th>🔗 LINK AJA / Pemilik</th>
+<th>📅 MASA AKTIF LINKAJA</th>
+<th>🏦 ALL BANK / Pemilik</th>
+<th>📅 MASA AKTIF BANK</th>
+<th style="width: 80px;">⚙️ Aksi</th>
+</tr>
+</thead>
+<tbody id="tableBody">
+</tbody>
+</table>
+</div>
+<div class="info-neon">
+💡 NOTE : PASTIKAN LAKUKAN CROSCHECK KEMBALI DAN SETIAP HARI KAMIS LUANGKAN WAKTU ANDA UNTUK MENGECEK MASA AKTIF JIKA ADA YANG PERLU DIPERPANJANG MAKA PERPANJANG DAN JANGAN LUPA DI UPDATE UNTUK MASA AKTIF YANG SUDAH DIPERPANJANG 💡
+</div>
+</div>
+
+<div class="status-bar" id="statusBar">✅ Siap | Total: 0 data</div>
+
+<script>
+// ---------- DATA STORE DEFAULT ----------
+const defaultData = {
+dana: [
+{ id: "d1", owner: "DANA G1 / ANI", date: "23 April 2027" },
+{ id: "d2", owner: "DANA G2 / SIRAJUDDIN", date: "23 April 2027" },
+{ id: "d3", owner: "DANA G3 / ROMIADI", date: "23 April 2027" },
+{ id: "d4", owner: "DANA G5 / RUMIATI", date: "23 April 2027" },
+{ id: "d5", owner: "DANA G7 / WAGIYEM", date: "23 April 2027" },
+{ id: "d6", owner: "DANA G8 / WAKIDI WIJAYA", date: "23 April 2027" },
+{ id: "d7", owner: "DANA G10 / INTAN", date: "02 Desember 2026" }
+],
+ovo: [
+{ id: "o1", owner: "OVO G1 / Kosim", date: "27 October 2027" },
+{ id: "o2", owner: "OVO G2 / Nani Karyati", date: "14 January 2027" },
+{ id: "o3", owner: "OVO G3 / IDA PARIDA", date: "10 January 2027" },
+{ id: "o4", owner: "OVO G4 / WIDIA ASTUTI", date: "09 February 2027" },
+{ id: "o5", owner: "OVO G5 / Heri Novianto", date: "30 November 2026" },
+{ id: "o6", owner: "OVO G6 / ULE SULAEMAN", date: "19 December 2026" },
+{ id: "o7", owner: "OVO G7 / Iwan Kurnia", date: "20 December 2026" },
+{ id: "o8", owner: "OVO G8 / Eti Yulianti", date: "18 January 2027" },
+{ id: "o9", owner: "OVO G9 / YULIANA", date: "18 January 2027" },
+{ id: "o10", owner: "OVO G10 / ETI SULSERAWATI", date: "28 November 2026" }
+],
+linkaja: [
+{ id: "l1", owner: "LINKAJA G1 / Ayu pebriani", date: "19 MEI 2027" },
+{ id: "l2", owner: "LINKAJA G2 / Taryana", date: "19 MEI 2027" },
+{ id: "l3", owner: "LINKAJA G3 / Tria wahyuni", date: "19 MEI 2027" },
+{ id: "l4", owner: "LINKAJA G4 / Lina marlina", date: "19 MEI 2027" },
+{ id: "l5", owner: "LINKAJA G5 / Nurhayati", date: "30 March 2027" },
+{ id: "l6", owner: "LINKAJA G6 / Muntakilah", date: "19 December 2026" },
+{ id: "l7", owner: "LINKAJA G7 / Santi", date: "21 March 2027" },
+{ id: "l8", owner: "LINKAJA G8 / Ida laela", date: "30 March 2027" },
+{ id: "l9", owner: "LINKAJA G9 / Dede munasih", date: "30 March 2027" },
+{ id: "l10", owner: "LINKAJA G10 / Riska ristiani", date: "30 March 2027" },
+],
+bank: [
+{ id: "b1", owner: "Hodijah", date: "14-Mar-2027" },
+{ id: "b2", owner: "Karlina", date: "14-Mar-2027" },
+{ id: "b3", owner: "SISCAFEBRIYANTI", date: "10-Apr-2027" },
+{ id: "b4", owner: "Ahmad Imansah", date: "11-Apr-2027" },
+{ id: "b5", owner: "Jumyati", date: "16-Mar-2027" },
+{ id: "b6", owner: "MUHAMMAD UBAIDILLAH", date: "5-May-2027" },
+{ id: "b7", owner: "RIO SETIAWAN", date: "21-Mar-2027" },
+{ id: "b8", owner: "ADITYA PRATAMA", date: "22-Mar-2027" },
+{ id: "b9", owner: "Indra Riansyah", date: "10-Apr-2027" },
+{ id: "b10", owner: "MOCH IQBAL MAULANA", date: "10-Apr-2027" },
+{ id: "b11", owner: "ANDRIAN WAHYU Prastyo", date: "16-Mar-2027" },
+{ id: "b12", owner: "RAYMOND ALEXANDER", date: "17 JUN 2027" },
+{ id: "b13", owner: "SITI NURHASANAH ENUR", date: "17-Nov-2026" },
+{ id: "b14", owner: "IMAS WINARSIH", date: "17-Nov-2026" },
+]
+};
+
+let dashboardData = JSON.parse(JSON.stringify(defaultData));
+let editMode = { active: false, type: null, id: null, rowIndex: null };
+
+// Helper functions
+function generateId(prefix) {
+return prefix + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+}
+
+function parseDate(str) {
+if (!str || str === '—') return null;
+const months = {
+'january':0, 'february':1, 'march':2, 'april':3, 'may':4, 'june':5,
+'july':6, 'august':7, 'september':8, 'october':9, 'november':10, 'december':11,
+'januari':0, 'februari':1, 'maret':2, 'april':3, 'mei':4, 'juni':5,
+'juli':6, 'agustus':7, 'september':8, 'oktober':9, 'november':10, 'desember':11
+};
+let lower = str.toLowerCase().replace(/[^\w\s]/g, '');
+let parts = lower.split(/\s+/);
+if (parts.length < 3) return null;
+let day = parseInt(parts[0]);
+let mon = months[parts[1]];
+let year = parseInt(parts[2]);
+if (isNaN(day) || mon === undefined || isNaN(year)) return null;
+return new Date(year, mon, day);
+}
+
+function renderDateBadge(dateStr, type, idx, id) {
+if (!dateStr || dateStr === '') return '<span class="badge-date">—</span>';
+return `<span class="badge-date" data-date="${dateStr}" data-type="${type}" data-idx="${idx}" data-id="${id}">${dateStr}</span>`;
+}
+
+// Render tabel dengan filter
+function renderTable() {
+const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+const maxRows = Math.max(
+dashboardData.dana.length,
+dashboardData.ovo.length,
+dashboardData.linkaja.length,
+dashboardData.bank.length
+);
+
+let tbody = document.getElementById('tableBody');
+tbody.innerHTML = '';
+let visibleCount = 0;
+
+for (let i = 0; i < maxRows; i++) {
+const danaItem = dashboardData.dana[i] || { owner: '', date: '', id: '' };
+const ovoItem = dashboardData.ovo[i] || { owner: '', date: '', id: '' };
+const linkItem = dashboardData.linkaja[i] || { owner: '', date: '', id: '' };
+const bankItem = dashboardData.bank[i] || { owner: '', date: '', id: '' };
+
+// Cek apakah baris ini cocok dengan pencarian
+const rowText = `${danaItem.owner} ${ovoItem.owner} ${linkItem.owner} ${bankItem.owner}`.toLowerCase();
+if (searchTerm !== '' && !rowText.includes(searchTerm)) continue;
+
+visibleCount++;
+
+let row = document.createElement('tr');
+row.setAttribute('data-row-index', i);
+row.innerHTML = `
+<td><span class="owner-name" data-type="dana" data-idx="${i}">${danaItem.owner || '—'}</span></td>
+<td>${renderDateBadge(danaItem.date, 'dana', i, danaItem.id)}</td>
+<td><span class="owner-name" data-type="ovo" data-idx="${i}">${ovoItem.owner || '—'}</span></td>
+<td>${renderDateBadge(ovoItem.date, 'ovo', i, ovoItem.id)}</td>
+<td><span class="owner-name" data-type="linkaja" data-idx="${i}">${linkItem.owner || '—'}</span></td>
+<td>${renderDateBadge(linkItem.date, 'linkaja', i, linkItem.id)}</td>
+<td><span class="owner-name" data-type="bank" data-idx="${i}">${bankItem.owner || '—'}</span></td>
+<td>${renderDateBadge(bankItem.date, 'bank', i, bankItem.id)}</td>
+<td>
+<button class="edit-btn" onclick="editRowData(${i})" title="Edit baris ini">✏️</button>
+<button class="delete-btn" onclick="deleteRowData(${i})" title="Hapus baris ini">🗑️</button>
+</td>
+`;
+tbody.appendChild(row);
+}
+
+if (tbody.children.length === 0) {
+tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 40px;">❄️ Tidak ada data yang cocok ❄️</td></tr>';
+}
+
+// Update status bar
+const totalData = dashboardData.dana.length + dashboardData.ovo.length + dashboardData.linkaja.length + dashboardData.bank.length;
+document.getElementById('statusBar').innerHTML = `✅ Siap | Total: ${totalData} data | Ditampilkan: ${visibleCount}`;
+
+applyDateStyles();
+attachBadgeClickEvents();
+}
+
+function attachBadgeClickEvents() {
+document.querySelectorAll('.badge-date').forEach(badge => {
+badge.removeEventListener('click', handleBadgeClick);
+badge.addEventListener('click', handleBadgeClick);
+});
+}
+
+function handleBadgeClick(e) {
+e.stopPropagation();
+const badge = e.currentTarget;
+const dateStr = badge.getAttribute('data-date');
+const type = badge.getAttribute('data-type');
+const idx = parseInt(badge.getAttribute('data-idx'));
+const id = badge.getAttribute('data-id');
+
+if (!dateStr || dateStr === '—') return;
+
+let newDate = prompt("Edit masa aktif (format: 23 April 2027), kosongkan untuk hapus tanggal:", dateStr);
+if (newDate !== null) {
+let targetArr = dashboardData[type];
+if (targetArr && targetArr[idx]) {
+targetArr[idx].date = newDate.trim();
+renderTable();
+showTemporaryStatus(`✅ ${type.toUpperCase()} tanggal berhasil diupdate`);
+}
+}
+}
+
+function editRowData(rowIdx) {
+const danaItem = dashboardData.dana[rowIdx];
+const ovoItem = dashboardData.ovo[rowIdx];
+const linkItem = dashboardData.linkaja[rowIdx];
+const bankItem = dashboardData.bank[rowIdx];
+
+let choices = [];
+if (danaItem) choices.push('dana');
+if (ovoItem) choices.push('ovo');
+if (linkItem) choices.push('link');
+if (bankItem) choices.push('bank');
+
+if (choices.length === 0) {
+alert('Tidak ada data untuk diedit di baris ini');
+return;
+}
+
+let choice = prompt(`Edit baris ke-${rowIdx + 1}\nPilih jenis yang ingin diedit:\n${choices.join(' / ')}\nKetik: ${choices.join(', ')}`, choices[0]);
+if (!choice) return;
+
+let typeMap = { 'dana': 'dana', 'ovo': 'ovo', 'link': 'linkaja', 'bank': 'bank' };
+let type = typeMap[choice.toLowerCase()];
+if (!type) {
+alert('Jenis tidak valid!');
+return;
+}
+
+let targetArr = dashboardData[type];
+if (!targetArr[rowIdx]) {
+alert('Data tidak ditemukan!');
+return;
+}
+
+let newOwner = prompt("Edit Nama Pemilik:", targetArr[rowIdx].owner);
+if (newOwner !== null && newOwner.trim() !== '') {
+targetArr[rowIdx].owner = newOwner.trim();
+}
+
+let newDate = prompt("Edit Tanggal (format: 23 April 2027 atau kosongkan):", targetArr[rowIdx].date);
+if (newDate !== null) {
+targetArr[rowIdx].date = newDate.trim();
+}
+
+renderTable();
+showTemporaryStatus(`✅ ${type.toUpperCase()} berhasil diedit`);
+}
+
+function deleteRowData(rowIdx) {
+if (confirm(`⚠️ Hapus semua entri pada baris ke-${rowIdx + 1}? (DANA, OVO, LINK, BANK akan dihapus di posisi tersebut)\nData yang dihapus tidak dapat dikembalikan!`)) {
+if (dashboardData.dana[rowIdx]) dashboardData.dana.splice(rowIdx, 1);
+if (dashboardData.ovo[rowIdx]) dashboardData.ovo.splice(rowIdx, 1);
+if (dashboardData.linkaja[rowIdx]) dashboardData.linkaja.splice(rowIdx, 1);
+if (dashboardData.bank[rowIdx]) dashboardData.bank.splice(rowIdx, 1);
+renderTable();
+showTemporaryStatus(`🗑️ Baris ${rowIdx + 1} telah dihapus`);
+}
+}
+
+function addNewRecord(type, owner, date) {
+if (!owner || owner.trim() === '') {
+alert('Nama pemilik tidak boleh kosong!');
+return false;
+}
+const newId = generateId(type);
+const newRecord = { id: newId, owner: owner.trim(), date: date || '' };
+dashboardData[type].push(newRecord);
+renderTable();
+showTemporaryStatus(`✅ ${type.toUpperCase()} berhasil ditambahkan`);
+return true;
+}
+
+function showTemporaryStatus(message) {
+const statusBar = document.getElementById('statusBar');
+const originalText = statusBar.innerHTML;
+statusBar.innerHTML = `✨ ${message} ✨`;
+statusBar.style.background = 'rgba(0, 255, 255, 0.2)';
+setTimeout(() => {
+statusBar.innerHTML = originalText;
+statusBar.style.background = 'rgba(0, 0, 0, 0.7)';
+}, 2000);
+}
+
+function resetToDefault() {
+if (confirm('⚠️ Reset ke data default? Semua perubahan akan hilang! ⚠️')) {
+dashboardData = JSON.parse(JSON.stringify(defaultData));
+renderTable();
+showTemporaryStatus('🔄 Data telah direset ke default');
+document.getElementById('editorPanel').classList.remove('show');
+editMode.active = false;
+}
+}
+
+// Event handlers
+document.getElementById('saveRecordBtn').onclick = () => {
+let type = document.getElementById('recordType').value;
+let owner = document.getElementById('ownerName').value.trim();
+let date = document.getElementById('activeDate').value.trim();
+
+if (!owner) {
+alert("Nama pemilik tidak boleh kosong!");
+return;
+}
+
+if (editMode.active && editMode.type && editMode.rowIndex !== null) {
+let arr = dashboardData[editMode.type];
+if (arr && arr[editMode.rowIndex]) {
+arr[editMode.rowIndex].owner = owner;
+arr[editMode.rowIndex].date = date;
+showTemporaryStatus(`✅ ${editMode.type.toUpperCase()} berhasil diupdate`);
+editMode.active = false;
+} else {
+addNewRecord(type, owner, date);
+}
+} else {
+addNewRecord(type, owner, date);
+}
+
+document.getElementById('editorPanel').classList.remove('show');
+clearForm();
+renderTable();
+};
+
+document.getElementById('cancelEditBtn').onclick = () => {
+document.getElementById('editorPanel').classList.remove('show');
+editMode.active = false;
+clearForm();
+};
+
+document.getElementById('toggleEditorBtn').onclick = () => {
+editMode.active = false;
+document.getElementById('editorTitle').innerText = '➕ TAMBAH DATA BARU';
+clearForm();
+document.getElementById('editorPanel').classList.toggle('show');
+};
+
+document.getElementById('resetDataBtn').onclick = () => {
+resetToDefault();
+};
+
+function clearForm() {
+document.getElementById('ownerName').value = '';
+document.getElementById('activeDate').value = '';
+document.getElementById('recordType').value = 'dana';
+}
+
+document.getElementById('exportDataBtn').onclick = () => {
+const dataStr = JSON.stringify(dashboardData, null, 2);
+const blob = new Blob([dataStr], { type: 'application/json' });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = `dashboard_masa_aktif_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+a.click();
+URL.revokeObjectURL(url);
+showTemporaryStatus('📁 Data berhasil diexport');
+};
+
+document.getElementById('importTriggerBtn').onclick = () => {
+document.getElementById('importFile').click();
+};
+
+document.getElementById('importFile').onchange = (e) => {
+const file = e.target.files[0];
+if (!file) return;
+const reader = new FileReader();
+reader.onload = (ev) => {
+try {
+const imported = JSON.parse(ev.target.result);
+if (imported.dana && imported.ovo && imported.linkaja && imported.bank) {
+dashboardData = imported;
+renderTable();
+showTemporaryStatus('📂 Import data sukses!');
+} else {
+alert('Format JSON tidak sesuai. Pastikan memiliki struktur: dana, ovo, linkaja, bank');
+}
+} catch (err) {
+alert('File tidak valid. Pastikan file adalah JSON yang benar.');
+}
+reader.onloadend = () => {
+document.getElementById('importFile').value = '';
+};
+};
+reader.readAsText(file);
+};
+
+function applyDateStyles() {
+document.querySelectorAll('.badge-date').forEach(badge => {
+let txt = badge.innerText;
+if (txt === '—') return;
+let parsed = parseDate(txt);
+if (!parsed) return;
+let now = new Date();
+now.setHours(0, 0, 0, 0);
+let diffDays = (parsed - now) / (1000 * 3600 * 24);
+badge.classList.remove('expired-badge', 'warning-badge');
+if (diffDays < 0) badge.classList.add('expired-badge');
+else if (diffDays <= 60) badge.classList.add('warning-badge');
+});
+}
+
+// Efek salju yang lebih ringan dan performa lebih baik
+function initSnow() {
+const snowCount = 200;
+const symbols = ['❄️', '❅', '❆', '✧'];
+
+function createSnowflake() {
+const snow = document.createElement('div');
+snow.classList.add('snowflake');
+snow.innerHTML = symbols[Math.floor(Math.random() * symbols.length)];
+snow.style.left = Math.random() * 100 + '%';
+const size = Math.random() * 1 + 0.5;
+snow.style.fontSize = size + 'rem';
+const duration = Math.random() * 5 + 3;
+snow.style.animationDuration = duration + 's';
+snow.style.animationDelay = Math.random() * 8 + 's';
+snow.style.opacity = Math.random() * 0.5 + 0.3;
+document.body.appendChild(snow);
+snow.addEventListener('animationend', () => {
+snow.remove();
+if (document.body.contains(snow.parentElement)) {
+createSnowflake();
+}
+});
+}
+
+for (let i = 0; i < snowCount; i++) {
+setTimeout(() => createSnowflake(), i * 100);
+}
+}
+
+document.getElementById('searchInput').addEventListener('input', () => renderTable());
+
+// Inisialisasi
+renderTable();
+initSnow();
+</script>
+</body>
+</html>
